@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>拍照导演</title>
+<meta name="description" content="对着场景拍一张，告诉你站哪、机位多高、怎么摆。">
+<meta name="theme-color" content="#0e1013">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="拍照导演">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:#0b0d10;color:#eef1f5;font:15px/1.5 -apple-system,"PingFang SC","Helvetica Neue",sans-serif}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);overscroll-behavior:none}
+.app{max-width:480px;margin:0 auto;padding:12px 12px 24px}
+.hidden{display:none!important}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.brand{font-size:18px;font-weight:800;letter-spacing:.3px}
+.brand small{font-size:10px;color:#7c8794;border:1px solid #2a3038;border-radius:99px;padding:1px 7px;margin-left:7px;vertical-align:3px;font-weight:600}
+.install{background:#151a21;border:1px solid #2a3038;color:#9fb0c0;border-radius:99px;padding:5px 10px;font-size:11.5px}
+/* 首页 */
+.home h1{font-size:30px;line-height:1.25;margin:18px 0 10px;font-weight:800}
+.home h1 em{font-style:normal;color:#22e3ff}
+.home p{color:#96a1ae;font-size:14px;margin:0 0 22px}
+.bigbtn{width:100%;border:0;border-radius:16px;padding:17px;font-size:16px;font-weight:800;color:#04222b;background:linear-gradient(180deg,#7defff,#22e3ff);margin-bottom:10px}
+.ghostbtn{width:100%;border:1px solid #2b323c;border-radius:16px;padding:15px;font-size:15px;font-weight:600;color:#c8d3de;background:#12161c;margin-bottom:10px}
+.foot{color:#6d7885;font-size:11.5px;margin-top:18px;line-height:1.6}
+.demoRow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:#7c8794;font-size:12px;margin-top:4px}
+.demoRow button{background:#151a21;border:1px solid #262d37;color:#b9c3cf;border-radius:99px;padding:5px 11px;font-size:12px}
+/* 相机舞台 */
+.stage{position:relative;width:100%;border-radius:16px;overflow:hidden;background:#000;aspect-ratio:3/4}
+.stage video,.stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.grid{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(#fff3 1px,transparent 1px),linear-gradient(90deg,#fff3 1px,transparent 1px);background-size:33.333% 33.333%;opacity:.5}
+.horizon{position:absolute;left:0;right:0;top:45%;height:0;border-top:2px dashed #ffd23f;opacity:.9;pointer-events:none;transition:top .18s linear}
+.horizon.off{display:none}
+.subj{position:absolute;left:16%;top:34%;width:22%;height:56%;border:2px solid #22e3ff;border-radius:8px;pointer-events:none;box-shadow:0 0 0 1px #0006 inset,0 0 22px #22e3ff66;transition:left .18s linear,top .18s linear,width .18s linear,height .18s linear}
+.subj svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.subj .tag{position:absolute;left:0;top:-25px;background:#000c;color:#8ff3ff;font-size:11px;padding:2px 8px;border-radius:6px;white-space:nowrap}
+.feet{position:absolute;left:0;right:0;bottom:-3px;display:flex;justify-content:space-between;padding:0 16%}
+.feet i{width:24px;height:7px;background:#22e3ff;border-radius:99px;box-shadow:0 0 10px #22e3ff}
+.live{position:absolute;left:8px;top:8px;right:8px;background:#000b;border:1px solid #ffffff1f;border-radius:10px;padding:6px 9px;font-size:11.5px;color:#cfe9ff;backdrop-filter:blur(8px)}
+.live b{color:#8ff3ff;font-weight:700}
+.count{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:104px;font-weight:800;color:#fff;text-shadow:0 6px 34px #000c;background:#0003}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+/* 控制区 */
+.modes{display:flex;background:#151920;border:1px solid #242a33;border-radius:12px;padding:3px;margin:10px 0 8px}
+.modes button{flex:1;background:none;border:0;color:#8b95a3;padding:9px;border-radius:9px;font-size:13.5px;font-weight:600}
+.modes button.on{background:#232a34;color:#fff}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;margin-bottom:9px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:none;background:#151a21;border:1px solid #262d37;color:#b9c3cf;border-radius:99px;padding:6px 12px;font-size:12.5px}
+.chips button.on{background:#22e3ff1f;border-color:#22e3ff;color:#8ff3ff}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.card{background:#151a21;border:1px solid #232a33;border-radius:12px;padding:9px 11px}
+.card b{display:block;font-size:10.5px;color:#7c8794;font-weight:700;letter-spacing:.4px;margin-bottom:3px}
+.card p{margin:0;font-size:12.5px;color:#dfe7ef}
+.steps{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column;gap:6px}
+.steps li{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:10px;background:#12161c;border:1px solid #1f252d;color:#93a0ad;font-size:12.5px;transition:.3s}
+.steps li.on{background:#0b2b3a;border-color:#1e7f9c;color:#d8f6ff}
+.steps li i{font-style:normal;width:17px;height:17px;border-radius:99px;background:#242c36;color:#9aa6b3;font-size:10px;display:flex;align-items:center;justify-content:center;flex:none;margin-top:1px}
+.steps li.on i{background:#22e3ff;color:#04222b}
+.why{font-size:12px;color:#8b95a3;background:#11151a;border-left:2px solid #2b3440;padding:8px 10px;border-radius:0 8px 8px 0;margin-bottom:10px}
+.tip{font-size:12.5px;color:#ffd23f;margin:0 0 10px;min-height:19px}
+.shoot{width:100%;border:0;border-radius:16px;padding:16px;font-size:16px;font-weight:800;color:#04222b;background:linear-gradient(180deg,#7defff,#22e3ff)}
+.shoot:disabled{opacity:.6}
+/* 结果 */
+.result h2{font-size:20px;margin:4px 0 10px}
+.thumbs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px}
+.thumb{position:relative;border-radius:10px;overflow:hidden;border:1px solid #232a33;background:#000;aspect-ratio:3/4}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb span{position:absolute;left:5px;top:5px;background:#000c;color:#8ff3ff;font-size:10px;padding:1px 6px;border-radius:99px}
+.row{display:flex;gap:8px}
+.row>*{flex:1}
+.resolve{background:#12161c;border:1px solid #232a33;border-radius:12px;padding:10px 12px;font-size:12.5px;color:#93a0ad;margin:10px 0}
+.resolve b{color:#8ff3ff}
+.sheet{position:fixed;inset:0;background:#000f;display:none;align-items:center;justify-content:center;padding:16px;z-index:20}
+.sheet.on{display:flex}
+.sheet img{max-width:100%;max-height:86vh;border-radius:12px}
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,16px);background:#0b6cff;color:#fff;padding:9px 16px;border-radius:99px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:30}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">拍照导演<small>v0.9</small></div>
+    <button class="install hidden" id="install">加到主屏幕</button>
+  </header>
+
+  <section id="home" class="home">
+    <h1>先拍一张空景，<br>它告诉<em>人该站哪</em>。</h1>
+    <p>不用下载，不用注册。手机后置摄像头对着要拍的地方，屏幕上直接画出黄线、蓝框和骨架；点一下，3 秒倒计时，连拍 3 张。</p>
+    <button class="bigbtn" id="btnCam">打开相机 · 开始拍</button>
+    <button class="ghostbtn" id="btnPick">用相册里的一张照片试</button>
+    <input type="file" id="file" accept="image/*" class="hidden">
+    <div class="demoRow">
+      <span>没相机？看示例：</span>
+      <button data-demo="field">草地逆光</button>
+      <button data-demo="street">城市街拍</button>
+      <button data-demo="path">林间小路</button>
+    </div>
+    <div class="foot">iOS 需要 https 才能开摄像头（部署到 GitHub Pages 自带）。相机画面只在手机里算，不上传。</div>
+  </section>
+
+  <section id="cam" class="hidden">
+    <div class="stage" id="stage">
+      <video id="video" playsinline autoplay muted></video>
+      <img id="photo" class="hidden" alt="场景">
+      <div class="grid" id="grid"></div>
+      <div class="horizon" id="horizon"></div>
+      <div class="subj" id="subj">
+        <svg id="skel" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+        <div class="feet"><i></i><i></i></div>
+        <div class="tag" id="posetag"></div>
+      </div>
+      <div class="live" id="live">正在分析画面…</div>
+      <div class="count" id="count"></div>
+      <div class="flash" id="flash"></div>
+    </div>
+
+    <div class="modes" id="modes">
+      <button data-mode="photo" class="on">教摄影 · 怎么构图</button>
+      <button data-mode="model">教模特 · 怎么摆</button>
+    </div>
+    <div class="chips" id="tabs"></div>
+    <div class="chips" id="chips"></div>
+    <div class="cards">
+      <div class="card"><b id="l-place">站哪</b><p id="c-place">—</p></div>
+      <div class="card"><b id="l-cam">机位</b><p id="c-cam">—</p></div>
+      <div class="card"><b id="l-exp">曝光</b><p id="c-exp">—</p></div>
+      <div class="card"><b id="l-face">表情</b><p id="c-face">—</p></div>
+    </div>
+    <p class="tip" id="tip"></p>
+    <ol class="steps" id="steps"></ol>
+    <div class="why" id="why"></div>
+    <button class="shoot" id="shoot">3 秒后拍</button>
+    <button class="ghostbtn" id="back" style="margin-top:10px">换场景 / 重选</button>
+  </section>
+
+  <section id="result" class="result hidden">
+    <h2>拍好了 · 挑一张发出去</h2>
+    <div class="thumbs" id="thumbs"></div>
+    <div class="resolve" id="resolve"></div>
+    <div class="row">
+      <button class="bigbtn" id="again" style="margin:0">再拍一组</button>
+      <button class="ghostbtn" id="reshoot" style="margin:0">回去重构图</button>
+    </div>
+  </section>
+</div>
+
+<div class="sheet" id="sheet"><img id="sheetImg" alt="大图"></div>
+<div class="toast" id="toast"></div>
+
+<script src="poses.js"></script>
+<script src="analyze.js"></script>
+<script>
+(function () {
+  var POSES = window.POSES || {};
+  var $ = function (id) { return document.getElementById(id); };
+  var POSE_ORDER = {
+    field: ["arms-up", "hair", "jump"],
+    street: ["turnback", "lean", "hands-pocket"],
+    path: ["hair", "arms-up", "jump"]
+  };
+  var SCENE_NAME = { auto: "自动", field: "草地逆光", street: "城市街拍", path: "林间小路" };
+  var S = {
+    source: "none",          // camera | photo
+    auto: true,
+    scene: "field",          // 实际生效的场景
+    manual: null,
+    pose: 0,
+    mode: "photo",
+    m: null,                 // 平滑后的指标
+    lastClass: null,
+    sameCount: 0,
+    shots: [],
+    busy: false
+  };
+
+  /* ---------------- 骨架 ---------------- */
+  var NS = "http://www.w3.org/2000/svg";
+  var BONES = [["head","neck"],["neck","lsh"],["neck","rsh"],["lsh","lel"],["lel","lwr"],
+               ["rsh","rel"],["rel","rwr"],["lsh","lhip"],["rsh","rhip"],["lhip","rhip"],
+               ["lhip","lknee"],["lknee","lank"],["rhip","rknee"],["rknee","rank"]];
+
+  function drawSkeleton(pose) {
+    var svg = $("skel");
+    var w = svg.clientWidth || 100, h = svg.clientHeight || 220;
+    svg.setAttribute("viewBox", "0 0 " + w + " " + h);
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    if (!pose) return;
+    var pts = pose.points;
+    function xy(k) { return [pts[k][0] * w, pts[k][1] * h]; }
+    BONES.forEach(function (b) {
+      if (!pts[b[0]] || !pts[b[1]]) return;
+      var a = xy(b[0]), c = xy(b[1]);
+      var under = document.createElementNS(NS, "line");
+      under.setAttribute("x1", a[0]); under.setAttribute("y1", a[1]);
+      under.setAttribute("x2", c[0]); under.setAttribute("y2", c[1]);
+      under.setAttribute("stroke", "#06222b"); under.setAttribute("stroke-width", Math.max(5, w * 0.13));
+      under.setAttribute("stroke-linecap", "round"); under.setAttribute("opacity", "0.4");
+      svg.appendChild(under);
+      var l = document.createElementNS(NS, "line");
+      l.setAttribute("x1", a[0]); l.setAttribute("y1", a[1]);
+      l.setAttribute("x2", c[0]); l.setAttribute("y2", c[1]);
+      l.setAttribute("stroke", "#eafcff"); l.setAttribute("stroke-width", Math.max(2.2, w * 0.05));
+      l.setAttribute("stroke-linecap", "round");
+      svg.appendChild(l);
+    });
+    Object.keys(pts).forEach(function (k) {
+      var p = xy(k), c = document.createElementNS(NS, "circle");
+      c.setAttribute("cx", p[0]); c.setAttribute("cy", p[1]);
+      c.setAttribute("r", k === "head" ? Math.max(5, w * 0.11) : Math.max(1.8, w * 0.04));
+      c.setAttribute("fill", k === "head" ? "#bff8ff" : "#22e3ff");
+      c.setAttribute("stroke", "#062a33"); c.setAttribute("stroke-width", "1");
+      svg.appendChild(c);
+    });
+  }
+
+  /* ---------------- 分析 ---------------- */
+  var A = document.createElement("canvas");
+  A.width = 160; A.height = 120;
+  var actx = A.getContext("2d", { willReadFrequently: true });
+
+  function analyzeVideo() {
+    var v = $("video");
+    if (!v.videoWidth) return null;
+    var ar = v.videoHeight / v.videoWidth;
+    var w = 160, h = Math.max(60, Math.round(w * ar));
+    if (A.width !== w || A.height !== h) { A.width = w; A.height = h; }
+    actx.drawImage(v, 0, 0, w, h);
+    var img = actx.getImageData(0, 0, w, h);
+    return Analyze.runPixels(img.data, w, h);
+  }
+
+  function smooth(prev, next) {
+    if (!prev) return next;
+    var k = 0.35, out = { W: next.W, H: next.H, scene: next.scene, sky: next.sky, top: next.top, bottom: next.bottom };
+    out.box = prev.box.map(function (p, i) {
+      var d = next.box[i] - p;
+      return Math.abs(d) > 0.14 ? next.box[i] : p + d * k;
+    });
+    out.horizon = Math.abs(next.horizon - prev.horizon) > 0.12 ? next.horizon : prev.horizon + (next.horizon - prev.horizon) * k;
+    out.backlit = prev.backlit === next.backlit ? prev.backlit : (Math.random() < 0.5 ? prev.backlit : next.backlit);
+    out.center = out.box[0] + out.box[2] / 2;
+    return out;
+  }
+
+  function applyMetrics(m) {
+    S.m = smooth(S.m, m);
+
+    // 自动判场景：连续 3 帧一致才切，手动选了就不切
+    if (!S.manual) {
+      if (m.scene === S.lastClass) S.sameCount++;
+      else { S.lastClass = m.scene; S.sameCount = 1; }
+      if (S.sameCount >= 3 && S.scene !== m.scene) { S.scene = m.scene; S.pose = 0; }
+    } else {
+      S.scene = S.manual;
+    }
+    render();
+  }
+
+  /* ---------------- 渲染 ---------------- */
+  function stageAspect(w, h) {
+    $("stage").style.aspectRatio = w + " / " + h;
+  }
+
+  var stepTimer = null, stepIdx = 0;
+
+  function render() {
+    var m = S.m || { box: [0.16, 0.34, 0.22, 0.56], horizon: 0.45, backlit: false, sky: 0.2, center: 0.28 };
+    var poseIds = POSE_ORDER[S.scene] || POSE_ORDER.field;
+    var pose = POSES[poseIds[S.pose % poseIds.length]];
+    var box = m.box;
+
+    $("horizon").style.top = (m.horizon * 100) + "%";
+    var subj = $("subj");
+    subj.style.left = (box[0] * 100) + "%";
+    subj.style.top = (box[1] * 100) + "%";
+    subj.style.width = (box[2] * 100) + "%";
+    subj.style.height = (box[3] * 100) + "%";
+    $("posetag").textContent = pose ? (pose.name + " · " + pose.difficulty) : "";
+    drawSkeleton(pose);
+
+    var center = Math.round((box[0] + box[2] / 2) * 100);
+    var feetGap = Math.round((1 - box[1] - box[3]) * 100);
+    var heightPct = Math.round(box[3] * 100);
+
+    $("live").innerHTML = "地平线 <b>" + Math.round(m.horizon * 100) + "%</b> · 视觉重心 <b>" +
+      center + "%</b> · " + (m.backlit ? "逆光" : "顺光") + (S.auto && S.manual ? "" : "");
+
+    var isPhoto = S.mode === "photo";
+    $("l-place").textContent = "站哪";
+    $("l-cam").textContent = isPhoto ? "机位" : "姿势";
+    $("l-exp").textContent = isPhoto ? "曝光" : "手";
+    $("l-face").textContent = isPhoto ? "表情" : "脸";
+    $("c-place").textContent = "画面 " + center + "% 横向，脚底留 " + feetGap + "% 地面，人占画面高度 " + heightPct + "%";
+    $("c-cam").textContent = isPhoto ? camText(S.scene, m) : (pose ? pose.cue : "");
+    $("c-exp").textContent = isPhoto
+      ? (m.backlit
+        ? "逆光：点屏幕上的脸，把小太阳往上拉 0.3，再拍剪影"
+        : "顺光：对焦在眼睛，曝光补偿 -0.3 保住高光")
+      : "手别垂直贴着身体：插兜、扶栏杆、撩头发，挑一个";
+    $("c-face").textContent = pose ? pose.expression : "";
+
+    var tip;
+    var d13 = Math.abs(center - 33), d23 = Math.abs(center - 66);
+    if (m.horizon < 0.38) tip = "地平线偏低：手机往下压一点，让地平线接近 45% 那条黄线。";
+    else if (m.horizon > 0.55) tip = "地平线偏高：手机抬高一点，或者往后退，把天空多留一些。";
+    else if (d13 <= 9) tip = isPhoto
+      ? "人踩在 1/3 线上，位置对了。脚踩两条亮线，别站到画面正中间。"
+      : "人踩在 1/3 线上，位置对了。脚踩两条亮线，重心压在一条腿上。";
+    else if (d23 <= 9) tip = isPhoto
+      ? "人踩在 2/3 线上，位置对了。脚踩两条亮线，肩膀转 15 度。"
+      : "人踩在 2/3 线上，位置对了。脚踩两条亮线，肩膀先转过去。";
+    else if (center < 33) tip = isPhoto
+      ? "往右走半步：站在画面 1/3 线上，别贴边也别居中。"
+      : "往右走半步，让人进蓝框，别贴边。";
+    else tip = isPhoto
+      ? "往左走半步：站在画面 2/3 线上，别贴边也别居中。"
+      : "往左走半步，让人进蓝框，别贴边。";
+    $("tip").textContent = tip;
+
+    var steps = isPhoto
+      ? [
+        "站进蓝框，脚踩两条亮线",
+        pose ? pose.cue : "",
+        "肩线一高一低，别正对镜头站成证件照",
+        pose ? pose.expression : "",
+        "连拍 3 张，换一个角度再拍 1 组"
+      ]
+      : [
+        pose ? pose.cue : "",
+        "肩线一高一低，别正对镜头站成证件照",
+        "手别贴身：插兜、扶栏杆、撩头发，挑一个",
+        pose ? pose.expression : "",
+        "连拍 3 张，换一个姿势再拍 1 组"
+      ];
+    var ol = $("steps");
+    if (ol.children.length !== steps.length) {
+      ol.innerHTML = "";
+      steps.forEach(function (t, i) {
+        var li = document.createElement("li");
+        li.innerHTML = "<i>" + (i + 1) + "</i><span></span>";
+        li.lastChild.textContent = t;
+        ol.appendChild(li);
+      });
+    } else {
+      [].forEach.call(ol.children, function (li, i) { li.lastChild.textContent = steps[i]; });
+    }
+
+    $("why").textContent = S.mode === "photo"
+      ? "视觉重心在画面 " + center + "% 横向位置；地平线在 " + Math.round(m.horizon * 100) + "% 高度。三分法不是玄学：人眼先落在交叉点，所以人踩三分之一线、地平线也压三分线，画面才不呆。"
+      : "姿势不是摆出来的，是重心和肩线摆出来的。先让身体有高低差，脸再转 15 度，最后才管表情。";
+
+    // 步骤轮播
+    if (!stepTimer) {
+      stepTimer = setInterval(function () {
+        var lis = ol.children;
+        if (!lis.length) return;
+        stepIdx = (stepIdx + 1) % lis.length;
+        [].forEach.call(lis, function (li, i) { li.className = i === stepIdx ? "on" : ""; });
+      }, 2600);
+    }
+
+    $("shoot").textContent = S.mode === "photo" ? "3 秒后拍（连拍 3 张）" : "3 秒后摆好（连拍 3 张）";
+    $("shoot").disabled = (S.source === "photo" || S.source === "none");
+  }
+
+  function camText(scene, m) {
+    if (scene === "street") return "站在胸口高度平视，往后退 2 米，用 2x 压缩背景";
+    if (scene === "path") return "手机端平，视线高度略低一点；让人走在路的中间偏一侧";
+    return "蹲低到腰部以下、轻微仰拍，让天空占画面上 2/3";
+  }
+
+  function buildTabs() {
+    var tabs = $("tabs");
+    tabs.innerHTML = "";
+    var order = ["auto", "field", "street", "path"];
+    order.forEach(function (k) {
+      var b = document.createElement("button");
+      b.textContent = k === "auto" ? "自动识别" : SCENE_NAME[k];
+      b.className = (k === "auto" ? S.auto : (!S.auto && S.manual === k)) ? "on" : "";
+      b.onclick = function () {
+        if (k === "auto") { S.auto = true; S.manual = null; }
+        else { S.auto = false; S.manual = k; S.scene = k; S.pose = 0; }
+        buildTabs(); render();
+      };
+      tabs.appendChild(b);
+    });
+
+    var chips = $("chips");
+    chips.innerHTML = "";
+    (POSE_ORDER[S.scene] || []).forEach(function (pid, i) {
+      var p = POSES[pid];
+      if (!p) return;
+      var b = document.createElement("button");
+      b.textContent = p.name;
+      b.className = i === (S.pose % 3) ? "on" : "";
+      b.onclick = function () { S.pose = i; buildTabs(); render(); };
+      chips.appendChild(b);
+    });
+  }
+
+  /* ---------------- 相机 ---------------- */
+  var loopId = null, lastT = 0;
+
+  function startCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      toast("这个浏览器不支持摄像头，请用 Safari 打开 https 链接");
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1440 } }
+    }).then(function (stream) {
+      var v = $("video");
+      v.srcObject = stream;
+      v.onloadedmetadata = function () {
+        stageAspect(v.videoWidth, v.videoHeight);
+        v.play();
+      };
+      S.source = "camera";
+      show("cam");
+      buildTabs();
+      render();
+      if (!loopId) loopId = requestAnimationFrame(tick);
+    }).catch(function (err) {
+      toast("相机打不开：" + (err && err.name || "未知") + "。检查浏览器设置里的摄像头权限");
+    });
+  }
+
+  function tick(t) {
+    loopId = requestAnimationFrame(tick);
+    if (S.source !== "camera" && S.source !== "demo") return;
+    if (document.hidden) return;
+    if (t - lastT < 280) return;
+    lastT = t;
+    var m;
+    try { m = analyzeVideo(); } catch (e) { return; }
+    if (m) applyMetrics(m);
+  }
+
+  function startDemo(name) {
+    var img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = function () {
+      var c = document.createElement("canvas");
+      c.width = 1080;
+      c.height = Math.round(1080 * img.naturalHeight / img.naturalWidth);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      var stream = c.captureStream ? c.captureStream(6) : null;
+      var v = $("video");
+      if (!stream) { toast("这个浏览器不支持示例流，请直接用相机"); return; }
+      v.srcObject = stream;
+      v.onloadedmetadata = function () { stageAspect(v.videoWidth, v.videoHeight); v.play(); };
+      S.source = "demo";
+      $("photo").classList.add("hidden");
+      v.classList.remove("hidden");
+      show("cam");
+      buildTabs();
+      render();
+      if (!loopId) loopId = requestAnimationFrame(tick);
+      toast("示例画面：可以点连拍走完整流程");
+    };
+    img.onerror = function () { toast("示例图加载失败"); };
+    img.src = "samples/scene_" + name + ".jpg";
+  }
+
+  function show(which) {
+    ["home", "cam", "result"].forEach(function (k) {
+      if (k === which) $(k).classList.remove("hidden");
+      else $(k).classList.add("hidden");
+    });
+    window.scrollTo(0, 0);
+  }
+
+  /* ---------------- 连拍 ---------------- */
+  var CANVAS = document.createElement("canvas");
+
+  function grab() {
+    var v = $("video");
+    var w = v.videoWidth, h = v.videoHeight;
+    CANVAS.width = w; CANVAS.height = h;
+    var c = CANVAS.getContext("2d");
+    c.drawImage(v, 0, 0, w, h);
+    return CANVAS.toDataURL("image/jpeg", 0.92);
+  }
+
+  function fire() {
+    var f = $("flash");
+    f.style.transition = "none"; f.style.opacity = "0.92";
+    requestAnimationFrame(function () {
+      f.style.transition = "opacity .5s"; f.style.opacity = "0";
+    });
+  }
+
+  function shoot() {
+    if (S.busy || S.source === "photo" || S.source === "none") return;
+    S.busy = true;
+    $("shoot").disabled = true;
+    var n = 3, c = $("count");
+    c.style.display = "flex"; c.textContent = n;
+    var timer = setInterval(function () {
+      n--;
+      if (n > 0) { c.textContent = n; return; }
+      clearInterval(timer); c.style.display = "none";
+      var shots = [];
+      var k = 0;
+      var burst = setInterval(function () {
+        try { shots.push(grab()); } catch (e) {}
+        fire();
+        k++;
+        if (k >= 3) {
+          clearInterval(burst);
+          S.shots = shots;
+          S.busy = false;
+          $("shoot").disabled = false;
+          showResult();
+        }
+      }, 420);
+    }, 800);
+  }
+
+  function showResult() {
+    var thumbs = $("thumbs");
+    thumbs.innerHTML = "";
+    S.shots.forEach(function (src, i) {
+      var d = document.createElement("div");
+      d.className = "thumb";
+      var img = document.createElement("img");
+      img.src = src; img.alt = "第 " + (i + 1) + " 张";
+      var s = document.createElement("span");
+      s.textContent = "#" + (i + 1);
+      d.appendChild(img); d.appendChild(s);
+      d.onclick = function () { $("sheetImg").src = src; $("sheet").classList.add("on"); };
+      thumbs.appendChild(d);
+    });
+    var m = S.m;
+    $("resolve").innerHTML = m
+      ? "这一组的口令：人站画面 <b>" + Math.round((m.box[0] + m.box[2] / 2) * 100) + "%</b> 横向、脚底留 <b>" +
+        Math.round((1 - m.box[1] - m.box[3]) * 100) + "%</b> 地面；地平线 <b>" + Math.round(m.horizon * 100) + "%</b>。" +
+        "不满意就点「回去重构图」，别在相册里反复删。"
+      : "";
+    show("result");
+  }
+
+  /* ---------------- 分享 / 保存 ---------------- */
+  function dataURLtoBlob(u) {
+    var parts = u.split(","), mime = parts[0].match(/:(.*?);/)[1];
+    var bin = atob(parts[1]), arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: mime });
+  }
+
+  function share(src, name) {
+    var blob = dataURLtoBlob(src);
+    var file = new File([blob], name, { type: "image/jpeg" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], text: "拍照导演" }).catch(function () {});
+      return;
+    }
+    var a = document.createElement("a");
+    a.href = src; a.download = name; a.click();
+    toast("已下载（电脑上）· 手机上长按图片保存");
+  }
+
+  /* ---------------- 相册 ---------------- */
+  function pickPhoto(file) {
+    var url = URL.createObjectURL(file);
+    var img = $("photo");
+    img.onload = function () {
+      stageAspect(img.naturalWidth, img.naturalHeight);
+      var w = 160, h = Math.max(60, Math.round(w * img.naturalHeight / img.naturalWidth));
+      var c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      var cx = c.getContext("2d", { willReadFrequently: true });
+      cx.drawImage(img, 0, 0, w, h);
+      var d = cx.getImageData(0, 0, w, h);
+      S.m = Analyze.runPixels(d.data, w, h);
+      S.scene = S.manual || S.m.scene;
+      S.source = "photo";
+      $("video").classList.add("hidden");
+      img.classList.remove("hidden");
+      show("cam");
+      buildTabs();
+      render();
+      toast("照片模式：只给口令，不能连拍");
+    };
+    img.src = url;
+    $("video").classList.add("hidden");
+    img.classList.remove("hidden");
+  }
+
+  /* ---------------- 事件 ---------------- */
+  document.querySelector(".demoRow").onclick = function (e) {
+    var b = e.target.closest("button");
+    if (b) startDemo(b.dataset.demo);
+  };
+  $("btnCam").onclick = function () {
+    $("photo").classList.add("hidden");
+    $("video").classList.remove("hidden");
+    startCamera();
+  };
+  $("btnPick").onclick = function () { $("file").click(); };
+  $("file").onchange = function (e) {
+    if (e.target.files && e.target.files[0]) {
+      $("video").classList.remove("hidden");
+      pickPhoto(e.target.files[0]);
+    }
+  };
+  $("modes").onclick = function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    S.mode = b.dataset.mode;
+    [].forEach.call(this.children, function (x) { x.className = x === b ? "on" : ""; });
+    render();
+  };
+  $("shoot").onclick = shoot;
+  $("back").onclick = function () { show("home"); };
+  $("again").onclick = function () { show("cam"); render(); };
+  $("reshoot").onclick = function () { show("cam"); render(); };
+  $("sheet").onclick = function () { this.classList.remove("on"); };
+
+  var toastTimer = null;
+  function toast(msg) {
+    var t = $("toast");
+    t.textContent = msg; t.className = "toast on";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.className = "toast"; }, 2600);
+  }
+
+  // 加到主屏幕提示
+  var standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  if (!standalone) $("install").classList.remove("hidden");
+  $("install").onclick = function () {
+    toast("Safari 里点「分享」→ 添加到主屏幕");
+  };
+
+  // Service Worker（https 下才有）
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  }
+
+  // 深链测试：?s=field&mode=model
+  var qs = new URLSearchParams(location.search);
+  if (qs.get("s") && POSE_ORDER[qs.get("s")]) { S.auto = false; S.manual = qs.get("s"); S.scene = qs.get("s"); }
+  // 调试用：?cam=1 直接进相机（iOS 上自动起相机可能被拦，正常入口走按钮）
+  if (qs.get("demo")) startDemo(qs.get("demo"));
+  if (qs.get("cam") === "1") {
+    $("photo").classList.add("hidden");
+    $("video").classList.remove("hidden");
+    startCamera();
+  }
+})();
+</script>
+</body>
+</html>
