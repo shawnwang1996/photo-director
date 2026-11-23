@@ -4,6 +4,8 @@
 
 纯前端单页，**零后端、零费用、零安装**：扫码打开就能用，加到主屏幕就是一个 App。
 
+**线上地址**：<https://shawnwang1996.github.io/photo-director/>（GitHub Pages，自带 https，手机上打开就能开相机）
+
 ---
 
 ## 1. 现在能跑什么
